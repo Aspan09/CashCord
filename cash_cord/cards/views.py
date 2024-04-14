@@ -10,7 +10,6 @@ from .serializers import CardsSerializer, CardTypeSerializer, BankSerializer, Ba
     CashbackOfferSerializer, CategorySerializer
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
-from rest_framework.authentication import BaseAuthentication
 
 
 class RegisterUserView(generics.CreateAPIView):
@@ -161,7 +160,6 @@ class AddUserCard(APIView):
 
         card_names = request.data.get('user_card_names', [])  # Get list of card names from JSON data
 
-        # Fetch card instances based on the provided card names
         card_instances = []
         for card_name in card_names:
             try:
@@ -170,7 +168,6 @@ class AddUserCard(APIView):
             except Cards.DoesNotExist:
                 return Response({"error": f"Карта '{card_name}' не найдена"}, status=status.HTTP_404_NOT_FOUND)
 
-        # Add each card instance to the user's user_card_name field
         user.user_card_name.add(*card_instances)
         user.save()
 
@@ -188,9 +185,8 @@ class DeleteUserCard(APIView):
         except CustomUser.DoesNotExist:
             return Response({"error": "Пользователь не найден"}, status=status.HTTP_404_NOT_FOUND)
 
-        card_names = request.data.get('user_card_names', [])  # Get list of card names from JSON data
+        card_names = request.data.get('user_card_names', [])
 
-        # Remove each card instance from the user's user_card_name field
         for card_name in card_names:
             user.user_card_name.filter(card_name=card_name).delete()
 
@@ -206,20 +202,16 @@ class GetCashbackOffers(APIView):
             category_name = serializer.validated_data['category']
             user = request.user
 
-            # Retrieve all cards associated with the user
             user_cards = user.user_card_name.all()
             print(user_cards)
             cashback_offers = []
-            # Iterate through each user card to get related cashback offers
             for card in user_cards:
                 user_bank = card.bank
                 offers = CashbackOffer.objects.filter(name_bank=user_bank, category__name_category=category_name)
                 cashback_offers.extend(offers)
 
-            # Sort the cashback offers by cashback percentage in descending order
             sorted_cashback_offers = sorted(cashback_offers, key=lambda x: x.cashback_percentage, reverse=True)
 
-            # Serialize the sorted cashback offers
             serialized_cashback_offers = CashbackOfferSerializer(sorted_cashback_offers, many=True)
             return Response(serialized_cashback_offers.data)
         else:
